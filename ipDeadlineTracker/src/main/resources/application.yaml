@@ -1,3 +1,20 @@
 spring:
   application:
     name: ipDeadlineTracker
+
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+
+
+#spring:
+#  datasource:
+#    url: jdbc:postgresql://localhost:5432/ipdeadline
+#    username: postgres
+#    password: YOUR_PASSWORD
+#
+#  jpa:
+#    hibernate:
+#      ddl-auto: validate
