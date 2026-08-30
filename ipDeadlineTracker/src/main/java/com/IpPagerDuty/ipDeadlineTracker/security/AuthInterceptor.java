@@ -10,6 +10,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.security.MessageDigest;
@@ -35,8 +36,9 @@ public class AuthInterceptor implements HandlerInterceptor {
     }
 
     @Override
+    @Transactional
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        String rawToken = extractToken(request);
+        String rawToken = extractToken(request, appProperties.getSession().getCookieName());
         if (rawToken == null) {
             response.setStatus(401);
             return false;
@@ -63,10 +65,10 @@ public class AuthInterceptor implements HandlerInterceptor {
         return true;
     }
 
-    public static String extractToken(HttpServletRequest request) {
+    public static String extractToken(HttpServletRequest request, String cookieName) {
         if (request.getCookies() == null) return null;
         return Arrays.stream(request.getCookies())
-            .filter(c -> "ipd_session".equals(c.getName()))
+            .filter(c -> cookieName.equals(c.getName()))
             .findFirst()
             .map(Cookie::getValue)
             .orElse(null);

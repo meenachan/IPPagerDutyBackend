@@ -33,7 +33,6 @@ public class AuditEvent {
     private String action;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
     private Map<String, Object> metadata;
 
     @Column(name = "created_at", nullable = false, updatable = false)

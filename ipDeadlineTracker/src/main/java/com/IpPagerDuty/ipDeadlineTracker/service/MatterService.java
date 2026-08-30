@@ -50,6 +50,7 @@ public class MatterService {
         Matter matter = new Matter();
         matter.setOrganization(org);
         matter.setTitle(request.title());
+        matter.setDocketNumber(request.docketNumber());
         matter.setType(request.type());
         matter.setOwner(user);
         matter.setCreatedBy(user);
@@ -90,6 +91,9 @@ public class MatterService {
         Matter matter = get(matterId, user);
         if (request.title() != null) {
             matter.setTitle(request.title());
+        }
+        if (request.docketNumber() != null) {
+            matter.setDocketNumber(request.docketNumber());
         }
         if (request.watcherUserIds() != null) {
             participantRepository.deleteAll(matter.getParticipants());

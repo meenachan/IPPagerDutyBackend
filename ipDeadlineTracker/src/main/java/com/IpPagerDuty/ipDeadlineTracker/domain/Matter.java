@@ -20,6 +20,9 @@ public class Matter {
     @Column(nullable = false)
     private String title;
 
+    @Column(name = "docket_number")
+    private String docketNumber;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Type type;
@@ -48,6 +51,9 @@ public class Matter {
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
+
+    public String getDocketNumber() { return docketNumber; }
+    public void setDocketNumber(String docketNumber) { this.docketNumber = docketNumber; }
 
     public Type getType() { return type; }
     public void setType(Type type) { this.type = type; }

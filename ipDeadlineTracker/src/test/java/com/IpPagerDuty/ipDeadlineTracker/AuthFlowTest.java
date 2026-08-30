@@ -22,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "spring.datasource.driver-class-name=org.h2.Driver",
     "spring.datasource.username=sa",
     "spring.datasource.password=",
+    "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
     "spring.jpa.hibernate.ddl-auto=create-drop",
     "spring.flyway.enabled=false",
     "spring.sql.init.mode=never"
@@ -31,13 +32,20 @@ class AuthFlowTest {
     @Autowired MockMvc mockMvc;
     @Autowired UserRepository userRepository;
     @Autowired OrganizationRepository organizationRepository;
+    @Autowired MagicLinkTokenRepository magicLinkTokenRepository;
 
     @BeforeEach
     void setUp() {
+        // Clean dependents first: magic link tokens FK-reference users, so
+        // leftover tokens from a prior test would block deleting users.
+        magicLinkTokenRepository.deleteAll();
         userRepository.deleteAll();
         User user = new User();
         user.setEmail("owner@example.com");
         userRepository.save(user);
+        User rateLimitUser = new User();
+        rateLimitUser.setEmail("ratelimit@example.com");
+        userRepository.save(rateLimitUser);
     }
 
     @Test
@@ -54,5 +62,19 @@ class AuthFlowTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"unknown@example.com\"}"))
             .andExpect(status().isAccepted());
+    }
+
+    @Test
+    void requestMagicLinkIsRateLimitedPerEmail() throws Exception {
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/api/v1/auth/magic-link")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"ratelimit@example.com\"}"))
+                .andExpect(status().isAccepted());
+        }
+        mockMvc.perform(post("/api/v1/auth/magic-link")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"ratelimit@example.com\"}"))
+            .andExpect(status().isTooManyRequests());
     }
 }

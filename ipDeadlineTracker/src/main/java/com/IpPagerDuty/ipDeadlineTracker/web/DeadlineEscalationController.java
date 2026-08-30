@@ -39,6 +39,15 @@ public class DeadlineEscalationController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{escalationPolicyId}/escalate-now")
+    public ResponseEntity<Void> escalateNow(@PathVariable UUID deadlineId,
+                                            @PathVariable UUID escalationPolicyId,
+                                            HttpServletRequest req) {
+        AuthContext ctx = AuthInterceptor.require(req);
+        escalationService.escalateNow(deadlineId, escalationPolicyId, ctx.user());
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping
     public ResponseEntity<List<EscalationPolicy>> list(@PathVariable UUID deadlineId, HttpServletRequest req) {
         AuthContext ctx = AuthInterceptor.require(req);

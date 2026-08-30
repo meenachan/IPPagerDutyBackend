@@ -170,4 +170,51 @@ public class OrganizationService {
         }
         return member;
     }
+
+    public List<Integer> getReminderOffsetsDays(UUID orgId, User user, List<Integer> defaultOffsets) {
+        ensureMemberOf(orgId, user);
+        Organization org = organizationRepository.findById(orgId).orElseThrow(() -> new NotFoundException("organization not found"));
+        return parseOffsets(org.getReminderOffsetsDays(), defaultOffsets);
+    }
+
+    @Transactional
+    public List<Integer> updateReminderOffsetsDays(UUID orgId, List<Integer> offsets, User user) {
+        OrganizationMember member = ensureMemberOf(orgId, user);
+        if (member.getRole() == OrganizationMember.Role.CLIENT) {
+            throw new ForbiddenException("clients cannot change notification settings");
+        }
+        if (offsets == null || offsets.isEmpty()) {
+            throw new com.IpPagerDuty.ipDeadlineTracker.security.BadRequestException(
+                "reminderOffsetsDays must contain at least one value", Map.of("field", "reminderOffsetsDays"));
+        }
+        for (Integer offset : offsets) {
+            if (offset == null || offset < 0) {
+                throw new com.IpPagerDuty.ipDeadlineTracker.security.BadRequestException(
+                    "reminderOffsetsDays must contain only non-negative integers", Map.of("field", "reminderOffsetsDays"));
+            }
+        }
+        if (offsets.stream().distinct().count() != offsets.size()) {
+            throw new com.IpPagerDuty.ipDeadlineTracker.security.BadRequestException(
+                "reminderOffsetsDays must not contain duplicates", Map.of("field", "reminderOffsetsDays"));
+        }
+        List<Integer> normalized = offsets.stream().sorted(java.util.Comparator.reverseOrder()).toList();
+
+        Organization org = organizationRepository.findById(orgId).orElseThrow(() -> new NotFoundException("organization not found"));
+        org.setReminderOffsetsDays(normalized.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(",")));
+        auditService.record(org, user, "ORGANIZATION", org.getId(), "notification_settings_updated", Map.of(
+            "reminderOffsetsDays", normalized.toString()
+        ));
+        return normalized;
+    }
+
+    private List<Integer> parseOffsets(String raw, List<Integer> defaultOffsets) {
+        if (raw == null || raw.isBlank()) {
+            return defaultOffsets;
+        }
+        return java.util.Arrays.stream(raw.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(Integer::parseInt)
+            .toList();
+    }
 }

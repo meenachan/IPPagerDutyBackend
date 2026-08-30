@@ -9,5 +9,6 @@ import java.util.UUID;
 
 public record MatterCreateRequest(@NotBlank String title,
                                   @NotNull Matter.Type type,
+                                  String docketNumber,
                                   Set<UUID> watcherUserIds) {
 }

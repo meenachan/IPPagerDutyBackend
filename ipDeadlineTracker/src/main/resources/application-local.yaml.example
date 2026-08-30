@@ -1,0 +1,28 @@
+# Copy this file to `application-local.yaml` (same folder) and fill in real
+# secrets. `application-local.yaml` is gitignored so it never gets committed.
+#
+# Run with this profile active, e.g.:
+#   ./gradlew bootRun --args='--spring.profiles.active=local'
+# or:
+#   SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
+
+app:
+  email:
+    provider: resend
+    resend:
+      api-key: re_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      from-address: "IPPagerDuty <onboarding@resend.dev>"
+  session:
+    # Plain http://localhost cannot receive a Secure cookie from browsers.
+    cookie-secure: false
+    cookie-same-site: Lax
+
+# --- Supabase Postgres example ---
+# Get these from Supabase dashboard > Project Settings > Database.
+# Prefer the "Connection pooling" host/port (6543) for app workloads;
+# use the direct host/port (5432) only for one-off Flyway/admin runs.
+spring:
+  datasource:
+    url: jdbc:postgresql://aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0
+    username: postgres.<project-ref>
+    password: your-supabase-db-password

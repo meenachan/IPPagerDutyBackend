@@ -80,6 +80,7 @@ public class CsvImportService {
             d.setDueDate(row.dueDate);
             d.setType(row.type);
             d.setResponsibleUser(row.responsible);
+            d.setNotes(row.notes);
             d.setCreatedBy(user);
             deadlineRepository.save(d);
             deadlineService.materializeReminders(d);
@@ -138,7 +139,7 @@ public class CsvImportService {
                     }
                 }
                 if (errors.isEmpty()) {
-                    rows.add(new ParsedRow(dueDate, type, responsible));
+                    rows.add(new ParsedRow(dueDate, type, responsible, notes));
                 }
             }
         } catch (org.springframework.web.server.ResponseStatusException e) {
@@ -149,7 +150,7 @@ public class CsvImportService {
         return rows;
     }
 
-    private record ParsedRow(LocalDate dueDate, String type, User responsible) {}
+    private record ParsedRow(LocalDate dueDate, String type, User responsible, String notes) {}
     public record RowError(int row, String reason) {}
     public record CsvImportResult(int importedCount, List<UUID> deadlineIds) {}
 }

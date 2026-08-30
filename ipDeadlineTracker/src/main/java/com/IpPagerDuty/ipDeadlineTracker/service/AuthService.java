@@ -59,7 +59,8 @@ public class AuthService {
         token.setExpiresAt(Instant.now().plus(appProperties.getMagicLink().getExpiryMinutes(), ChronoUnit.MINUTES));
         tokenRepository.save(token);
 
-        emailSender.send(user.getEmail(), "Your magic link", "Click to log in: http://localhost:8080/api/v1/auth/magic-link/consume?token=" + rawToken);
+        emailSender.send(user.getEmail(), "Your magic link",
+            "Click to log in: " + appProperties.getFrontend().getBaseUrl() + appProperties.getFrontend().getCallbackPath() + "?token=" + rawToken);
         logger.info("Magic link requested for user {}", user.getId());
     }
 

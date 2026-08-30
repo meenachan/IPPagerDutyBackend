@@ -22,9 +22,12 @@ import java.util.UUID;
 @RequestMapping("/api/v1/organizations")
 public class OrganizationController {
     private final OrganizationService organizationService;
+    private final List<Integer> defaultOffsets;
 
-    public OrganizationController(OrganizationService organizationService) {
+    public OrganizationController(OrganizationService organizationService,
+                                   com.IpPagerDuty.ipDeadlineTracker.config.AppProperties appProperties) {
         this.organizationService = organizationService;
+        this.defaultOffsets = appProperties.getReminders().getOffsetsDays();
     }
 
     @PostMapping
@@ -57,5 +60,23 @@ public class OrganizationController {
         AuthContext ctx = AuthInterceptor.require(req);
         organizationService.removeMember(orgId, memberId, ctx.user());
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{orgId}/notification-settings")
+    public ResponseEntity<com.IpPagerDuty.ipDeadlineTracker.web.dto.NotificationSettingsResponse> getNotificationSettings(
+            @PathVariable UUID orgId, HttpServletRequest req) {
+        AuthContext ctx = AuthInterceptor.require(req);
+        List<Integer> offsets = organizationService.getReminderOffsetsDays(orgId, ctx.user(), defaultOffsets);
+        return ResponseEntity.ok(new com.IpPagerDuty.ipDeadlineTracker.web.dto.NotificationSettingsResponse(offsets));
+    }
+
+    @PatchMapping("/{orgId}/notification-settings")
+    public ResponseEntity<com.IpPagerDuty.ipDeadlineTracker.web.dto.NotificationSettingsResponse> updateNotificationSettings(
+            @PathVariable UUID orgId,
+            @org.springframework.web.bind.annotation.RequestBody com.IpPagerDuty.ipDeadlineTracker.web.dto.NotificationSettingsRequest request,
+            HttpServletRequest req) {
+        AuthContext ctx = AuthInterceptor.require(req);
+        List<Integer> offsets = organizationService.updateReminderOffsetsDays(orgId, request.reminderOffsetsDays(), ctx.user());
+        return ResponseEntity.ok(new com.IpPagerDuty.ipDeadlineTracker.web.dto.NotificationSettingsResponse(offsets));
     }
 }

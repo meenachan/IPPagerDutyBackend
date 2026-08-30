@@ -73,8 +73,14 @@ public class ScheduledJob {
             if (n.getType() == Notification.Type.REMINDER) {
                 String email = deadline.getResponsibleUser().getEmail();
                 notificationSender.send(email, subject, body);
+                auditService.record(matter.getOrganization(), null, "DEADLINE", deadline.getId(), "reminder_sent", Map.of(
+                    "notificationId", n.getId().toString()
+                ));
             } else {
                 sendEscalations(deadline);
+                auditService.record(matter.getOrganization(), null, "DEADLINE", deadline.getId(), "escalation_sent", Map.of(
+                    "notificationId", n.getId().toString()
+                ));
             }
         }
     }

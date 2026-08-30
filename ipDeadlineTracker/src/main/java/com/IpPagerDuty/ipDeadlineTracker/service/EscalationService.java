@@ -2,6 +2,7 @@ package com.IpPagerDuty.ipDeadlineTracker.service;
 
 import com.IpPagerDuty.ipDeadlineTracker.domain.*;
 import com.IpPagerDuty.ipDeadlineTracker.domain.repositories.*;
+import com.IpPagerDuty.ipDeadlineTracker.job.NotificationSender;
 import com.IpPagerDuty.ipDeadlineTracker.security.ConflictException;
 import com.IpPagerDuty.ipDeadlineTracker.security.ForbiddenException;
 import com.IpPagerDuty.ipDeadlineTracker.security.NotFoundException;
@@ -25,6 +26,7 @@ public class EscalationService {
     private final DeadlineRepository deadlineRepository;
     private final DeadlineEscalationPolicyRepository depRepository;
     private final NotificationRepository notificationRepository;
+    private final NotificationSender notificationSender;
     private final AuditService auditService;
 
     public EscalationService(OrganizationRepository organizationRepository,
@@ -34,6 +36,7 @@ public class EscalationService {
                              DeadlineRepository deadlineRepository,
                              DeadlineEscalationPolicyRepository depRepository,
                              NotificationRepository notificationRepository,
+                             NotificationSender notificationSender,
                              AuditService auditService) {
         this.organizationRepository = organizationRepository;
         this.memberRepository = memberRepository;
@@ -42,6 +45,7 @@ public class EscalationService {
         this.deadlineRepository = deadlineRepository;
         this.depRepository = depRepository;
         this.notificationRepository = notificationRepository;
+        this.notificationSender = notificationSender;
         this.auditService = auditService;
     }
 
@@ -114,6 +118,30 @@ public class EscalationService {
         depRepository.save(dep);
         materializeEscalation(deadline, policy);
         auditService.record(deadline.getMatter().getOrganization(), user, "DEADLINE", deadlineId, "escalation_policy_attached", Map.of("policyId", policyId.toString()));
+    }
+
+    /**
+     * Sends a policy's escalation emails immediately (staff-triggered "escalate now"),
+     * rather than waiting for the scheduled trigger date. Records a real audit event
+     * so the frontend never has to fake this action locally.
+     */
+    @Transactional
+    public void escalateNow(UUID deadlineId, UUID policyId, User user) {
+        Deadline deadline = deadlineRepository.findById(deadlineId).orElseThrow(() -> new NotFoundException("deadline not found"));
+        ensureStaff(deadline.getMatter().getOrganization().getId(), user);
+        DeadlineEscalationPolicy dep = depRepository.findById(new DeadlineEscalationPolicyId(deadlineId, policyId))
+            .orElseThrow(() -> new NotFoundException("policy not attached"));
+        EscalationPolicy policy = dep.getEscalationPolicy();
+        EscalationEmailGroup group = policy.getEmailGroup();
+        for (String email : group.getEmails()) {
+            notificationSender.send(email,
+                "Escalation: " + deadline.getType() + " deadline",
+                "Deadline for matter " + deadline.getMatter().getTitle() + " is due " + deadline.getDueDate());
+        }
+        auditService.record(deadline.getMatter().getOrganization(), user, "DEADLINE", deadlineId, "escalation_sent_manual", Map.of(
+            "policyId", policyId.toString(),
+            "emailGroupId", group.getId().toString()
+        ));
     }
 
     @Transactional

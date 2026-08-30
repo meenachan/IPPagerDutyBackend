@@ -28,7 +28,8 @@ public class DeadlineImportController {
         CsvImportService.CsvImportResult result = csvImportService.importDeadlines(matterId, file, ctx.user());
         return ResponseEntity.status(201).body(Map.of(
             "importedCount", result.importedCount(),
-            "deadlineIds", result.deadlineIds()
+            "deadlineIds", result.deadlineIds(),
+            "errors", java.util.List.of()
         ));
     }
 }

@@ -42,10 +42,19 @@ public class Deadline {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "not_done_reason")
+    private NotDoneReason notDoneReason;
+
+    /** Free-text notes, e.g. imported from the CSV "notes" column. */
+    @Column(name = "notes")
+    private String notes;
+
     @OneToMany(mappedBy = "deadline", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<DeadlineWatcher> watchers = new HashSet<>();
 
-    public enum Status { OPEN, COMPLETED, MISSED }
+    public enum Status { OPEN, COMPLETED, MISSED, ARCHIVED }
+    public enum NotDoneReason { WAITING_ON_CLIENT, WAITING_ON_OFFICE, NEED_MORE_TIME, INTERNAL_REVIEW, OTHER }
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -73,6 +82,12 @@ public class Deadline {
 
     public Instant getCompletedAt() { return completedAt; }
     public void setCompletedAt(Instant completedAt) { this.completedAt = completedAt; }
+
+    public NotDoneReason getNotDoneReason() { return notDoneReason; }
+    public void setNotDoneReason(NotDoneReason notDoneReason) { this.notDoneReason = notDoneReason; }
+
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
 
     public Set<DeadlineWatcher> getWatchers() { return watchers; }
     public void setWatchers(Set<DeadlineWatcher> watchers) { this.watchers = watchers; }

@@ -26,6 +26,7 @@ public class DeadlineService {
     private final UserRepository userRepository;
     private final DeadlineWatcherRepository watcherRepository;
     private final NotificationRepository notificationRepository;
+    private final DeadlineEscalationPolicyRepository escalationPolicyRepository;
     private final AuditService auditService;
     private final AppProperties appProperties;
 
@@ -35,6 +36,7 @@ public class DeadlineService {
                            UserRepository userRepository,
                            DeadlineWatcherRepository watcherRepository,
                            NotificationRepository notificationRepository,
+                           DeadlineEscalationPolicyRepository escalationPolicyRepository,
                            AuditService auditService,
                            AppProperties appProperties) {
         this.deadlineRepository = deadlineRepository;
@@ -43,6 +45,7 @@ public class DeadlineService {
         this.userRepository = userRepository;
         this.watcherRepository = watcherRepository;
         this.notificationRepository = notificationRepository;
+        this.escalationPolicyRepository = escalationPolicyRepository;
         this.auditService = auditService;
         this.appProperties = appProperties;
     }
@@ -152,13 +155,44 @@ public class DeadlineService {
         };
     }
 
+    @Transactional
+    public void archive(UUID deadlineId, User user) {
+        Deadline deadline = get(deadlineId, user);
+        ensureMemberOf(deadline.getMatter().getOrganization().getId(), user);
+        if (deadline.getStatus() == Deadline.Status.ARCHIVED) {
+            return;
+        }
+        deadline.setStatus(Deadline.Status.ARCHIVED);
+        cancelFutureNotifications(deadline);
+        auditService.record(deadline.getMatter().getOrganization(), user, "DEADLINE", deadline.getId(), "archived", Map.of());
+    }
+
+    @Transactional
+    public Deadline markNotDone(UUID deadlineId, Deadline.NotDoneReason reason, User user) {
+        Deadline deadline = get(deadlineId, user);
+        ensureMemberOf(deadline.getMatter().getOrganization().getId(), user);
+        deadline.setNotDoneReason(reason);
+        auditService.record(deadline.getMatter().getOrganization(), user, "DEADLINE", deadline.getId(), "not_done_reason_set", Map.of(
+            "reason", reason.name()
+        ));
+        return deadline;
+    }
+
+    public List<EscalationPolicy> attachedPolicies(UUID deadlineId) {
+        return escalationPolicyRepository.findByDeadlineId(deadlineId).stream()
+            .map(DeadlineEscalationPolicy::getEscalationPolicy)
+            .toList();
+    }
+
     private void cancelFutureNotifications(Deadline deadline) {
         notificationRepository.cancelPendingByDeadline(deadline.getId());
     }
 
     public void materializeReminders(Deadline deadline) {
         LocalDateTime dueDateTime = deadline.getDueDate().atStartOfDay();
-        for (int offset : appProperties.getReminders().getOffsetsDays()) {
+        Organization org = deadline.getMatter().getOrganization();
+        List<Integer> offsets = parseOffsets(org.getReminderOffsetsDays());
+        for (int offset : offsets) {
             LocalDateTime scheduled = dueDateTime.minusDays(offset);
             Notification n = new Notification();
             n.setDeadline(deadline);
@@ -167,6 +201,17 @@ public class DeadlineService {
             n.setDeliveryStatus(Notification.DeliveryStatus.PENDING);
             notificationRepository.save(n);
         }
+    }
+
+    private List<Integer> parseOffsets(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return appProperties.getReminders().getOffsetsDays();
+        }
+        return java.util.Arrays.stream(raw.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(Integer::parseInt)
+            .toList();
     }
 
     private void addWatchers(Deadline deadline, Set<UUID> watcherIds, UUID orgId) {
