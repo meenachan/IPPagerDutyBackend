@@ -5,8 +5,11 @@ import com.IpPagerDuty.ipDeadlineTracker.domain.Session;
 import com.IpPagerDuty.ipDeadlineTracker.security.AuthInterceptor;
 import com.IpPagerDuty.ipDeadlineTracker.service.AuthService;
 import com.IpPagerDuty.ipDeadlineTracker.service.MagicLinkRateLimiter;
+import com.IpPagerDuty.ipDeadlineTracker.service.OrganizationService;
 import com.IpPagerDuty.ipDeadlineTracker.web.dto.MagicLinkConsumeRequest;
 import com.IpPagerDuty.ipDeadlineTracker.web.dto.MagicLinkRequest;
+import com.IpPagerDuty.ipDeadlineTracker.web.dto.OrganizationCreateRequest;
+import com.IpPagerDuty.ipDeadlineTracker.web.dto.SignupRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -21,11 +24,28 @@ public class AuthController {
     private final AuthService authService;
     private final AppProperties appProperties;
     private final MagicLinkRateLimiter rateLimiter;
+    private final OrganizationService organizationService;
 
-    public AuthController(AuthService authService, AppProperties appProperties, MagicLinkRateLimiter rateLimiter) {
+    public AuthController(AuthService authService, AppProperties appProperties, MagicLinkRateLimiter rateLimiter,
+                          OrganizationService organizationService) {
         this.authService = authService;
         this.appProperties = appProperties;
         this.rateLimiter = rateLimiter;
+        this.organizationService = organizationService;
+    }
+
+    @PostMapping("/signup")
+    public ResponseEntity<Map<String, String>> signup(@Valid @RequestBody SignupRequest request,
+                                                       HttpServletRequest httpRequest) {
+        rateLimiter.checkAndRecord(request.email(), clientIp(httpRequest));
+        com.IpPagerDuty.ipDeadlineTracker.domain.User user = authService.createUserForSignup(
+            request.email(), request.displayName());
+        var organization = organizationService.create(new OrganizationCreateRequest(request.organizationName(), request.role()), user);
+        authService.requestMagicLink(user.getEmail());
+        return ResponseEntity.accepted().body(Map.of(
+            "organizationId", organization.getId().toString(),
+            "message", "signup completed; check your email"
+        ));
     }
 
     @PostMapping("/magic-link")

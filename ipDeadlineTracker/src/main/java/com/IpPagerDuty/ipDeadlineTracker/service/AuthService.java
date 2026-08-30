@@ -51,6 +51,7 @@ public class AuthService {
         if (userOpt.isEmpty()) {
             return;
         }
+
         User user = userOpt.get();
         String rawToken = tokenGenerator.generate(32);
         MagicLinkToken token = new MagicLinkToken();
@@ -62,6 +63,20 @@ public class AuthService {
         emailSender.send(user.getEmail(), "Your magic link",
             "Click to log in: " + appProperties.getFrontend().getBaseUrl() + appProperties.getFrontend().getCallbackPath() + "?token=" + rawToken);
         logger.info("Magic link requested for user {}", user.getId());
+    }
+
+    @Transactional
+    public User createUserForSignup(String email, String displayName) {
+        String normalizedEmail = email.toLowerCase().trim();
+        User user = userRepository.findByEmail(normalizedEmail).orElseGet(() -> {
+            User created = new User();
+            created.setEmail(normalizedEmail);
+            return userRepository.save(created);
+        });
+        if (displayName != null && !displayName.isBlank()) {
+            user.setDisplayName(displayName.trim());
+        }
+        return user;
     }
 
     @Transactional
@@ -79,6 +94,18 @@ public class AuthService {
         String sessionToken = tokenGenerator.generate(32);
         session.setTokenHash(AuthInterceptor.sha256(sessionToken));
         session.setExpiresAt(now.plus(appProperties.getSession().getExpiryDays(), ChronoUnit.DAYS));
+        sessionRepository.save(session);
+        rawSessionTokens.put(sessionToken, session);
+        return session;
+    }
+
+    @Transactional
+    public Session createDevelopmentSession(User user) {
+        Session session = new Session();
+        session.setUser(user);
+        String sessionToken = tokenGenerator.generate(32);
+        session.setTokenHash(AuthInterceptor.sha256(sessionToken));
+        session.setExpiresAt(Instant.now().plus(appProperties.getSession().getExpiryDays(), ChronoUnit.DAYS));
         sessionRepository.save(session);
         rawSessionTokens.put(sessionToken, session);
         return session;

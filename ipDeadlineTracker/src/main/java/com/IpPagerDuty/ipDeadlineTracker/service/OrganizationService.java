@@ -57,7 +57,7 @@ public class OrganizationService {
         OrganizationMember membership = new OrganizationMember();
         membership.setOrganization(org);
         membership.setUser(creator);
-        membership.setRole(OrganizationMember.Role.BUSINESS_OWNER);
+        membership.setRole(request.role() == null ? OrganizationMember.Role.BUSINESS_OWNER : request.role());
         memberRepository.save(membership);
 
         auditService.record(org, creator, "ORGANIZATION", org.getId(), "created", Map.of("name", org.getName()));

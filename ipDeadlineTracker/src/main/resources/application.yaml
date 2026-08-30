@@ -63,7 +63,7 @@ app:
     base-url: ${FRONTEND_BASE_URL:http://localhost:4200}
     callback-path: /auth/callback
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
   email:
     provider: ${EMAIL_PROVIDER:mail}
     resend:
