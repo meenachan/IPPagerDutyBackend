@@ -78,29 +78,12 @@ public class AppProperties {
         public void setAllowedOrigins(List<String> allowedOrigins) { this.allowedOrigins = allowedOrigins; }
     }
 
-    /** Selects which EmailSender implementation is active: "mail" (SMTP, default) or "resend" (resend.com API). */
+    /** Selects which EmailSender implementation is active. Currently only "mail" (SMTP, e.g. Gmail) is supported. */
     public static class Email {
         private String provider = "mail";
-        private Resend resend = new Resend();
 
         public String getProvider() { return provider; }
         public void setProvider(String provider) { this.provider = provider; }
-
-        public Resend getResend() { return resend; }
-        public void setResend(Resend resend) { this.resend = resend; }
-
-        public static class Resend {
-            private String apiKey;
-            private String fromAddress = "IPPagerDuty <onboarding@resend.dev>";
-            private String baseUrl = "https://api.resend.com";
-
-            public String getApiKey() { return apiKey; }
-            public void setApiKey(String apiKey) { this.apiKey = apiKey; }
-            public String getFromAddress() { return fromAddress; }
-            public void setFromAddress(String fromAddress) { this.fromAddress = fromAddress; }
-            public String getBaseUrl() { return baseUrl; }
-            public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
-        }
     }
 }
 
