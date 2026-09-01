@@ -22,10 +22,16 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
-	implementation 'org.springframework.boot:spring-boot-starter-mail'
 	implementation 'org.flywaydb:flyway-core'
 	runtimeOnly 'org.flywaydb:flyway-database-postgresql:11.1.0'
 	implementation 'org.apache.commons:commons-csv:1.11.0'
+
+
+	implementation 'com.google.api-client:google-api-client:2.7.2'
+	implementation 'com.google.oauth-client:google-oauth-client-jetty:1.39.0'
+	implementation 'com.google.apis:google-api-services-gmail:v1-rev20260727-2.0.0'
+	implementation 'com.google.auth:google-auth-library-oauth2-http:1.39.0'
+	implementation 'org.eclipse.angus:angus-mail:2.0.3'
 
 	runtimeOnly 'org.postgresql:postgresql'
 	testRuntimeOnly 'com.h2database:h2'

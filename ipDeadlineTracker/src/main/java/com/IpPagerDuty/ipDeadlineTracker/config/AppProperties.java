@@ -13,7 +13,6 @@ public class AppProperties {
     private Reminders reminders = new Reminders();
     private Frontend frontend = new Frontend();
     private Cors cors = new Cors();
-    private Email email = new Email();
 
     public MagicLink getMagicLink() { return magicLink; }
     public void setMagicLink(MagicLink magicLink) { this.magicLink = magicLink; }
@@ -29,9 +28,6 @@ public class AppProperties {
 
     public Cors getCors() { return cors; }
     public void setCors(Cors cors) { this.cors = cors; }
-
-    public Email getEmail() { return email; }
-    public void setEmail(Email email) { this.email = email; }
 
     public static class MagicLink {
         private int expiryMinutes = 15;
@@ -78,12 +74,4 @@ public class AppProperties {
         public void setAllowedOrigins(List<String> allowedOrigins) { this.allowedOrigins = allowedOrigins; }
     }
 
-    /** Selects which EmailSender implementation is active. Currently only "mail" (SMTP, e.g. Gmail) is supported. */
-    public static class Email {
-        private String provider = "mail";
-
-        public String getProvider() { return provider; }
-        public void setProvider(String provider) { this.provider = provider; }
-    }
 }
-
