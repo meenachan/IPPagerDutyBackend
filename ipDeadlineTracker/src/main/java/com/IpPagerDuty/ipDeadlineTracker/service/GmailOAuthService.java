@@ -34,8 +34,7 @@ public class GmailOAuthService {
         new SecureRandom().nextBytes(stateBytes);
         expectedState = Base64.getUrlEncoder().withoutPadding().encodeToString(stateBytes);
         return flow().newAuthorizationUrl().setRedirectUri(properties.getRedirectUri())
-            .setAccessType("offline").setApprovalPrompt("force")
-            .set("prompt", "select_account consent")
+            .setAccessType("offline").set("prompt", "select_account consent")
             .setState(expectedState).build();
     }
 
