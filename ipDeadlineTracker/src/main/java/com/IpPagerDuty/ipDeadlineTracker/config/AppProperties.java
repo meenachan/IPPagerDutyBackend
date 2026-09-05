@@ -40,8 +40,9 @@ public class AppProperties {
         private int expiryDays = 7;
         /** Secure flag on the session cookie. Must be false for plain http://localhost dev; true in any HTTPS deployment. */
         private boolean cookieSecure = true;
-        /** SameSite attribute. Use "None" (requires cookieSecure=true) when frontend/backend are on different sites. */
-        private String cookieSameSite = "Lax";
+        /** Production frontend/backend are on different sites, so None is required.
+         * Local development overrides this to Lax because both apps run on localhost. */
+        private String cookieSameSite = "None";
         public String getCookieName() { return cookieName; }
         public void setCookieName(String cookieName) { this.cookieName = cookieName; }
         public int getExpiryDays() { return expiryDays; }

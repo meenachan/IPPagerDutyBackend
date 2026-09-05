@@ -48,10 +48,10 @@ app:
     # Must be false for local http://localhost dev (browsers reject Secure
     # cookies over plain http); true in any real (https) deployment.
     cookie-secure: ${COOKIE_SECURE:true}
-    # Use "None" (requires cookie-secure=true) when the Angular frontend and
-    # this backend are deployed on different sites/domains. "Lax" is fine
-    # when they share the same site (e.g. same registrable domain).
-    cookie-same-site: ${COOKIE_SAME_SITE:Lax}
+    # The deployed Angular frontend and backend are on different sites, so
+    # cross-site XHR requires SameSite=None and Secure=true. Local development
+    # can override this with COOKIE_SAME_SITE=Lax.
+    cookie-same-site: ${COOKIE_SAME_SITE:None}
   reminders:
     offsets-days: 30,7,2,1
   frontend:
