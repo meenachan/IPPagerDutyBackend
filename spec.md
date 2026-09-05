@@ -47,12 +47,11 @@ mark items complete, and cannot configure escalation policies.
 ## API surface (REST JSON, all under `/api/v1`)
 
 ### Auth
-- `POST /auth/magic-link` — body `{ email }`. Always returns `202
-  Accepted` regardless of whether the email is known (avoids user
-  enumeration). If the email belongs to an existing user, sends a
-  magic-link email; if unknown, no organization exists yet for it and
-  no email is sent (see Edge cases — no self-serve signup in MVP,
-  invite-only).
+- `POST /auth/magic-link` — body `{ email }`. Returns `202 Accepted`
+  and sends a magic-link email when the email belongs to an existing
+  user. Returns `404 Not Found` with `{ "code": "USER_NOT_FOUND",
+  "error": "No account found for this email" }` when the email is
+  unknown, so the client can direct the user to create a workspace.
 - `POST /auth/magic-link/consume` — body `{ token }`. Validates token
   (exists, unexpired, unused), marks it used, creates a `Session`,
   returns session cookie (`HttpOnly`, `Secure`, `SameSite=Lax`) valid 7
@@ -123,7 +122,7 @@ mark items complete, and cannot configure escalation policies.
 
 ## Edge cases & error handling
 
-- **Requesting a magic link for an unknown email:** respond `202 Accepted` (no email sent, no user created) — do not reveal whether the email exists.
+- **Requesting a magic link for an unknown email:** respond `404 Not Found` with code `USER_NOT_FOUND` (no email sent, no user created), allowing the client to direct the user to signup or create a workspace.
 - **Consuming an expired or already-used token:** `401 Unauthorized`, generic "invalid or expired link" message.
 - **Consuming a token twice concurrently (race):** the second attempt must fail — token consumption is an atomic compare-and-set on `usedAt IS NULL`.
 - **Inviting an email already belonging to a different organization:** `409 Conflict` — "this email is already part of another organization" (enforced by the one-user-one-org rule).

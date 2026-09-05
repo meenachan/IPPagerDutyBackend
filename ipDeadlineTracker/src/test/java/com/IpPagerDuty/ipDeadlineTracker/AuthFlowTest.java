@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -57,11 +58,12 @@ class AuthFlowTest {
     }
 
     @Test
-    void requestMagicLinkForUnknownUserReturns202() throws Exception {
+    void requestMagicLinkForUnknownUserReturns404() throws Exception {
         mockMvc.perform(post("/api/v1/auth/magic-link")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"unknown@example.com\"}"))
-            .andExpect(status().isAccepted());
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
     }
 
     @Test

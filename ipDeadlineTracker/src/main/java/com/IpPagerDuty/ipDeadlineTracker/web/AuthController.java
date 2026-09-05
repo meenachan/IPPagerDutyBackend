@@ -13,6 +13,7 @@ import com.IpPagerDuty.ipDeadlineTracker.web.dto.SignupRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -49,9 +50,14 @@ public class AuthController {
     }
 
     @PostMapping("/magic-link")
-    public ResponseEntity<Void> requestMagicLink(@Valid @RequestBody MagicLinkRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> requestMagicLink(@Valid @RequestBody MagicLinkRequest request, HttpServletRequest httpRequest) {
         rateLimiter.checkAndRecord(request.email(), clientIp(httpRequest));
-        authService.requestMagicLink(request.email());
+        if (!authService.requestMagicLink(request.email())) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                "code", "USER_NOT_FOUND",
+                "error", "No account found for this email"
+            ));
+        }
         return ResponseEntity.accepted().build();
     }
 

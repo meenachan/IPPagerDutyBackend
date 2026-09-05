@@ -46,10 +46,10 @@ public class AuthService {
     }
 
     @Transactional
-    public void requestMagicLink(String email) {
+    public boolean requestMagicLink(String email) {
         Optional<User> userOpt = userRepository.findByEmail(email.toLowerCase().trim());
         if (userOpt.isEmpty()) {
-            return;
+            return false;
         }
 
         User user = userOpt.get();
@@ -63,6 +63,7 @@ public class AuthService {
         emailSender.send(user.getEmail(), "Your magic link",
             "Click to log in: " + appProperties.getFrontend().getBaseUrl() + appProperties.getFrontend().getCallbackPath() + "?token=" + rawToken);
         logger.info("Magic link requested for user {}", user.getId());
+        return true;
     }
 
     @Transactional
