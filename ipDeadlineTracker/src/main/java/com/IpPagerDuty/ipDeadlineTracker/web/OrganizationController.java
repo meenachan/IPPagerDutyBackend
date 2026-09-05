@@ -67,7 +67,8 @@ public class OrganizationController {
             @PathVariable UUID orgId, HttpServletRequest req) {
         AuthContext ctx = AuthInterceptor.require(req);
         List<Integer> offsets = organizationService.getReminderOffsetsDays(orgId, ctx.user(), defaultOffsets);
-        return ResponseEntity.ok(new com.IpPagerDuty.ipDeadlineTracker.web.dto.NotificationSettingsResponse(offsets));
+        String timezone = organizationService.getTimezone(orgId, ctx.user());
+        return ResponseEntity.ok(new com.IpPagerDuty.ipDeadlineTracker.web.dto.NotificationSettingsResponse(offsets, timezone));
     }
 
     @PatchMapping("/{orgId}/notification-settings")
@@ -76,7 +77,8 @@ public class OrganizationController {
             @org.springframework.web.bind.annotation.RequestBody com.IpPagerDuty.ipDeadlineTracker.web.dto.NotificationSettingsRequest request,
             HttpServletRequest req) {
         AuthContext ctx = AuthInterceptor.require(req);
-        List<Integer> offsets = organizationService.updateReminderOffsetsDays(orgId, request.reminderOffsetsDays(), ctx.user());
-        return ResponseEntity.ok(new com.IpPagerDuty.ipDeadlineTracker.web.dto.NotificationSettingsResponse(offsets));
+        List<Integer> offsets = organizationService.updateReminderOffsetsDays(orgId, request.reminderOffsetsDays(), request.timezone(), ctx.user());
+        String timezone = organizationService.getTimezone(orgId, ctx.user());
+        return ResponseEntity.ok(new com.IpPagerDuty.ipDeadlineTracker.web.dto.NotificationSettingsResponse(offsets, timezone));
     }
 }

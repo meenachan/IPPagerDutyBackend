@@ -32,4 +32,6 @@ public interface DeadlineRepository extends JpaRepository<Deadline, UUID> {
 
     @Query("SELECT d FROM Deadline d WHERE d.status = 'OPEN' AND d.dueDate < :today")
     List<Deadline> findOpenPastDue(@Param("today") LocalDate today);
+
+    List<Deadline> findByStatus(Deadline.Status status);
 }

@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -49,8 +49,13 @@ public class ScheduledJob {
     }
 
     private void markMissedDeadlines(Instant now) {
-        LocalDate today = LocalDate.ofInstant(now, ZoneOffset.UTC);
-        List<Deadline> missed = deadlineRepository.findOpenPastDue(today);
+        List<Deadline> missed = deadlineRepository.findByStatus(Deadline.Status.OPEN).stream()
+            .filter(deadline -> {
+                String timezone = deadline.getMatter().getOrganization().getTimezone();
+                ZoneId zone = ZoneId.of(timezone == null || timezone.isBlank() ? "UTC" : timezone);
+                return deadline.getDueDate().isBefore(LocalDate.ofInstant(now, zone));
+            })
+            .toList();
         for (Deadline d : missed) {
             d.setStatus(Deadline.Status.MISSED);
             auditService.record(d.getMatter().getOrganization(), null, "DEADLINE", d.getId(), "marked_missed", Map.of(

@@ -17,6 +17,9 @@ public class Organization {
     @Column(name = "reminder_offsets_days")
     private String reminderOffsetsDays;
 
+    @Column(name = "timezone", nullable = false)
+    private String timezone = "UTC";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -28,6 +31,9 @@ public class Organization {
 
     public String getReminderOffsetsDays() { return reminderOffsetsDays; }
     public void setReminderOffsetsDays(String reminderOffsetsDays) { this.reminderOffsetsDays = reminderOffsetsDays; }
+
+    public String getTimezone() { return timezone; }
+    public void setTimezone(String timezone) { this.timezone = timezone; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

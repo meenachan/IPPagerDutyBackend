@@ -15,6 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.time.DateTimeException;
+import java.time.ZoneId;
 
 @Service
 public class OrganizationService {
@@ -26,6 +28,7 @@ public class OrganizationService {
     private final AuthService authService;
     private final EmailSender emailSender;
     private final AuditService auditService;
+    private final DeadlineService deadlineService;
 
     public OrganizationService(OrganizationRepository organizationRepository,
                                UserRepository userRepository,
@@ -34,7 +37,8 @@ public class OrganizationService {
                                DeadlineRepository deadlineRepository,
                                AuthService authService,
                                EmailSender emailSender,
-                               AuditService auditService) {
+                               AuditService auditService,
+                               DeadlineService deadlineService) {
         this.organizationRepository = organizationRepository;
         this.userRepository = userRepository;
         this.memberRepository = memberRepository;
@@ -43,6 +47,7 @@ public class OrganizationService {
         this.authService = authService;
         this.emailSender = emailSender;
         this.auditService = auditService;
+        this.deadlineService = deadlineService;
     }
 
     @Transactional
@@ -177,8 +182,14 @@ public class OrganizationService {
         return parseOffsets(org.getReminderOffsetsDays(), defaultOffsets);
     }
 
+    public String getTimezone(UUID orgId, User user) {
+        ensureMemberOf(orgId, user);
+        Organization org = organizationRepository.findById(orgId).orElseThrow(() -> new NotFoundException("organization not found"));
+        return org.getTimezone() == null || org.getTimezone().isBlank() ? "UTC" : org.getTimezone();
+    }
+
     @Transactional
-    public List<Integer> updateReminderOffsetsDays(UUID orgId, List<Integer> offsets, User user) {
+    public List<Integer> updateReminderOffsetsDays(UUID orgId, List<Integer> offsets, String timezone, User user) {
         OrganizationMember member = ensureMemberOf(orgId, user);
         if (member.getRole() == OrganizationMember.Role.CLIENT) {
             throw new ForbiddenException("clients cannot change notification settings");
@@ -200,9 +211,21 @@ public class OrganizationService {
         List<Integer> normalized = offsets.stream().sorted(java.util.Comparator.reverseOrder()).toList();
 
         Organization org = organizationRepository.findById(orgId).orElseThrow(() -> new NotFoundException("organization not found"));
+        String normalizedTimezone = timezone == null || timezone.isBlank()
+            ? (org.getTimezone() == null || org.getTimezone().isBlank() ? "UTC" : org.getTimezone())
+            : timezone.trim();
+        try {
+            ZoneId.of(normalizedTimezone);
+        } catch (DateTimeException exception) {
+            throw new com.IpPagerDuty.ipDeadlineTracker.security.BadRequestException(
+                "timezone must be a valid IANA timezone", Map.of("field", "timezone"));
+        }
         org.setReminderOffsetsDays(normalized.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(",")));
+        org.setTimezone(normalizedTimezone);
+        deadlineService.rescheduleRemindersForOrganization(orgId);
         auditService.record(org, user, "ORGANIZATION", org.getId(), "notification_settings_updated", Map.of(
-            "reminderOffsetsDays", normalized.toString()
+            "reminderOffsetsDays", normalized.toString(),
+            "timezone", normalizedTimezone
         ));
         return normalized;
     }

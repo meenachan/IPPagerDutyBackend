@@ -12,8 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -189,18 +188,29 @@ public class DeadlineService {
     }
 
     public void materializeReminders(Deadline deadline) {
-        LocalDateTime dueDateTime = deadline.getDueDate().atStartOfDay();
         Organization org = deadline.getMatter().getOrganization();
+        ZoneId timezone = ZoneId.of(org.getTimezone() == null || org.getTimezone().isBlank() ? "UTC" : org.getTimezone());
         List<Integer> offsets = parseOffsets(org.getReminderOffsetsDays());
         for (int offset : offsets) {
-            LocalDateTime scheduled = dueDateTime.minusDays(offset);
+            Instant scheduled = deadline.getDueDate().atStartOfDay(timezone).minusDays(offset).toInstant();
+            if (!scheduled.isAfter(Instant.now())) continue;
             Notification n = new Notification();
             n.setDeadline(deadline);
             n.setType(Notification.Type.REMINDER);
-            n.setScheduledFor(scheduled.toInstant(ZoneOffset.UTC));
+            n.setScheduledFor(scheduled);
             n.setDeliveryStatus(Notification.DeliveryStatus.PENDING);
             notificationRepository.save(n);
         }
+    }
+
+    @Transactional
+    public void rescheduleRemindersForOrganization(UUID organizationId) {
+        deadlineRepository.findByStatus(Deadline.Status.OPEN).stream()
+            .filter(deadline -> deadline.getMatter().getOrganization().getId().equals(organizationId))
+            .forEach(deadline -> {
+                notificationRepository.deletePendingByDeadline(deadline.getId());
+                materializeReminders(deadline);
+            });
     }
 
     private List<Integer> parseOffsets(String raw) {

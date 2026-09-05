@@ -21,6 +21,10 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     int cancelPendingByDeadline(@Param("deadlineId") UUID deadlineId);
 
     @Modifying
+    @Query("DELETE FROM Notification n WHERE n.deadline.id = :deadlineId AND n.deliveryStatus = 'PENDING'")
+    int deletePendingByDeadline(@Param("deadlineId") UUID deadlineId);
+
+    @Modifying
     @Query("UPDATE Notification n SET n.deliveryStatus = 'SENT', n.sentAt = :now WHERE n.id = :id AND n.deliveryStatus = 'PENDING'")
     int claimAndMarkSent(@Param("id") UUID id, @Param("now") Instant now);
 }
