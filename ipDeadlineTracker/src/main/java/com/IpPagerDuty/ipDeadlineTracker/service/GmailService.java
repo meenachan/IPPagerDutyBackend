@@ -14,7 +14,9 @@ import jakarta.mail.Message.RecipientType;
 import jakarta.mail.Session;
 import jakarta.mail.internet.AddressException;
 import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -56,9 +58,30 @@ public class GmailService {
     }
 
     public void send(String to, String subject, String body) {
+        try {
+            sendMime(to, subject, createMimeMessage(properties.getSender(), to, subject, body));
+        } catch (AddressException e) {
+            throw new GmailEmailException("Invalid recipient email address", e);
+        } catch (jakarta.mail.MessagingException e) {
+            throw new GmailEmailException("Gmail message creation failed", e);
+        }
+    }
+
+    public void sendHtml(String to, String subject, String textBody, String htmlBody) {
         validateAddress(to);
         try {
-            MimeMessage mimeMessage = createMimeMessage(properties.getSender(), to, subject, body);
+            MimeMessage mimeMessage = createHtmlMimeMessage(properties.getSender(), to, subject, textBody, htmlBody);
+            sendMime(to, subject, mimeMessage);
+        } catch (AddressException e) {
+            throw new GmailEmailException("Invalid recipient email address", e);
+        } catch (jakarta.mail.MessagingException e) {
+            throw new GmailEmailException("Gmail API request failed", e);
+        }
+    }
+
+    private void sendMime(String to, String subject, MimeMessage mimeMessage) {
+        validateAddress(to);
+        try {
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             mimeMessage.writeTo(output);
             Message message = new Message().setRaw(Base64.getUrlEncoder().withoutPadding()
@@ -69,6 +92,24 @@ public class GmailService {
         } catch (IOException | jakarta.mail.MessagingException e) {
             throw new GmailEmailException("Gmail API request failed", e);
         }
+    }
+
+    static MimeMessage createHtmlMimeMessage(String sender, String to, String subject, String textBody, String htmlBody)
+        throws AddressException, jakarta.mail.MessagingException {
+        Session session = Session.getInstance(new Properties());
+        MimeMessage message = new MimeMessage(session);
+        message.setFrom(new InternetAddress(sender));
+        message.setRecipients(RecipientType.TO, new Address[]{new InternetAddress(to, true)});
+        message.setSubject(subject, StandardCharsets.UTF_8.name());
+        MimeMultipart multipart = new MimeMultipart("alternative");
+        MimeBodyPart textPart = new MimeBodyPart();
+        textPart.setText(textBody, StandardCharsets.UTF_8.name());
+        multipart.addBodyPart(textPart);
+        MimeBodyPart htmlPart = new MimeBodyPart();
+        htmlPart.setContent(htmlBody, "text/html; charset=UTF-8");
+        multipart.addBodyPart(htmlPart);
+        message.setContent(multipart);
+        return message;
     }
 
     static MimeMessage createMimeMessage(String sender, String to, String subject, String body)

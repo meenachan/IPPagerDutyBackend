@@ -19,4 +19,13 @@ public class GmailEmailSender implements EmailSender {
             logger.warn("Failed to send email to {}: {}", to, e.getMessage());
         }
     }
+
+    @Override
+    public void sendHtml(String to, String subject, String textBody, String htmlBody) {
+        try {
+            gmailService.sendHtml(to, subject, textBody, htmlBody);
+        } catch (GmailEmailException | IllegalStateException e) {
+            logger.warn("Failed to send HTML email to {}: {}", to, e.getMessage());
+        }
+    }
 }

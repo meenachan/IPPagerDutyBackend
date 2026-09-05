@@ -11,8 +11,9 @@ import com.IpPagerDuty.ipDeadlineTracker.web.dto.EscalationPolicyRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -112,6 +113,7 @@ public class EscalationService {
         if (!policy.getOrganization().getId().equals(deadline.getMatter().getOrganization().getId())) {
             throw new NotFoundException("policy not found");
         }
+        notificationRepository.cancelPendingEscalationsByDeadline(deadlineId);
         DeadlineEscalationPolicy dep = new DeadlineEscalationPolicy();
         dep.setDeadline(deadline);
         dep.setEscalationPolicy(policy);
@@ -177,15 +179,17 @@ public class EscalationService {
     }
 
     private void materializeEscalation(Deadline deadline, EscalationPolicy policy) {
-        LocalDateTime dueDateTime = deadline.getDueDate().atStartOfDay();
-        LocalDateTime scheduled = switch (policy.getTriggerType()) {
+        String configuredTimezone = deadline.getMatter().getOrganization().getTimezone();
+        ZoneId timezone = ZoneId.of(configuredTimezone == null || configuredTimezone.isBlank() ? "UTC" : configuredTimezone);
+        ZonedDateTime dueDateTime = deadline.getDueDate().atStartOfDay(timezone);
+        Instant scheduled = (switch (policy.getTriggerType()) {
             case BEFORE_DUE -> dueDateTime.minusDays(policy.getTriggerOffsetDays());
             case AFTER_DUE -> dueDateTime.plusDays(policy.getTriggerOffsetDays());
-        };
+        }).toInstant();
         Notification n = new Notification();
         n.setDeadline(deadline);
         n.setType(Notification.Type.ESCALATION);
-        n.setScheduledFor(scheduled.toInstant(ZoneOffset.UTC));
+        n.setScheduledFor(scheduled);
         n.setDeliveryStatus(Notification.DeliveryStatus.PENDING);
         notificationRepository.save(n);
     }

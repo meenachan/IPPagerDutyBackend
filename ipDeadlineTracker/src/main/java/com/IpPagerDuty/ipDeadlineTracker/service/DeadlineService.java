@@ -201,6 +201,20 @@ public class DeadlineService {
             n.setDeliveryStatus(Notification.DeliveryStatus.PENDING);
             notificationRepository.save(n);
         }
+        materializeDefaultEscalation(deadline, timezone);
+    }
+
+    private void materializeDefaultEscalation(Deadline deadline, ZoneId timezone) {
+        LocalDate today = LocalDate.now(timezone);
+        if (!deadline.getDueDate().isAfter(today)) return;
+        Instant scheduled = deadline.getDueDate().atStartOfDay(timezone).minusDays(7).toInstant();
+        Notification n = new Notification();
+        n.setDeadline(deadline);
+        n.setType(Notification.Type.ESCALATION);
+        n.setRecipientEmail("__DEFAULT_OWNER__");
+        n.setScheduledFor(scheduled.isAfter(Instant.now()) ? scheduled : Instant.now());
+        n.setDeliveryStatus(Notification.DeliveryStatus.PENDING);
+        notificationRepository.save(n);
     }
 
     @Transactional

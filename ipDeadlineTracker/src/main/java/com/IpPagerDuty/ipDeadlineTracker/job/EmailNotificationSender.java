@@ -15,4 +15,9 @@ public class EmailNotificationSender implements NotificationSender {
     public void send(String to, String subject, String body) {
         emailSender.send(to, subject, body);
     }
+
+    @Override
+    public void sendHtml(String to, String subject, String textBody, String htmlBody) {
+        emailSender.sendHtml(to, subject, textBody, htmlBody);
+    }
 }
