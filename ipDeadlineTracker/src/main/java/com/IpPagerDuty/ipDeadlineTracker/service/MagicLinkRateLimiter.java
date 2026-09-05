@@ -1,6 +1,7 @@
 package com.IpPagerDuty.ipDeadlineTracker.service;
 
 import com.IpPagerDuty.ipDeadlineTracker.security.TooManyRequestsException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -31,6 +32,26 @@ public class MagicLinkRateLimiter {
         if (ip != null && !tryConsume(ipHits, ip, MAX_PER_IP, now)) {
             throw new TooManyRequestsException("too many magic link requests from this address, please try again later");
         }
+    }
+
+    @Scheduled(fixedDelay = 10 * 60 * 1000L)
+    void removeExpiredEntries() {
+        removeExpiredEntries(emailHits);
+        removeExpiredEntries(ipHits);
+    }
+
+    private void removeExpiredEntries(ConcurrentHashMap<String, Deque<Long>> store) {
+        long now = Instant.now().toEpochMilli();
+        store.forEach((key, hits) -> {
+            synchronized (hits) {
+                while (!hits.isEmpty() && now - hits.peekFirst() > WINDOW_MILLIS) {
+                    hits.pollFirst();
+                }
+                if (hits.isEmpty()) {
+                    store.remove(key, hits);
+                }
+            }
+        });
     }
 
     private boolean tryConsume(ConcurrentHashMap<String, Deque<Long>> store, String key, int max, long now) {
