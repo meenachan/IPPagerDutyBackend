@@ -20,19 +20,22 @@ public class MatterService {
     private final UserRepository userRepository;
     private final MatterParticipantRepository participantRepository;
     private final AuditService auditService;
+    private final MatterCreationRateLimiter matterCreationRateLimiter;
 
     public MatterService(MatterRepository matterRepository,
                          OrganizationRepository organizationRepository,
                          OrganizationMemberRepository memberRepository,
                          UserRepository userRepository,
                          MatterParticipantRepository participantRepository,
-                         AuditService auditService) {
+                         AuditService auditService,
+                         MatterCreationRateLimiter matterCreationRateLimiter) {
         this.matterRepository = matterRepository;
         this.organizationRepository = organizationRepository;
         this.memberRepository = memberRepository;
         this.userRepository = userRepository;
         this.participantRepository = participantRepository;
         this.auditService = auditService;
+        this.matterCreationRateLimiter = matterCreationRateLimiter;
     }
 
     @Transactional
@@ -47,6 +50,7 @@ public class MatterService {
         }
 
         Organization org = member.getOrganization();
+        matterCreationRateLimiter.checkAndRecord(orgId, user.getId());
         Matter matter = new Matter();
         matter.setOrganization(org);
         matter.setTitle(request.title());
@@ -74,6 +78,24 @@ public class MatterService {
                 .toList();
         }
         return all;
+    }
+
+    @Transactional
+    public void delete(UUID orgId, UUID matterId, User user) {
+        Matter matter = matterRepository.findById(matterId)
+            .orElseThrow(() -> new NotFoundException("matter not found"));
+        OrganizationMember member = ensureMemberOf(orgId, user);
+        if (!matter.getOrganization().getId().equals(orgId)) {
+            throw new NotFoundException("matter not found");
+        }
+        if (member.getRole() != OrganizationMember.Role.BUSINESS_OWNER
+            && !matter.getOwner().getId().equals(user.getId())) {
+            throw new ForbiddenException("only the matter owner or business owner can delete this matter");
+        }
+        auditService.record(matter.getOrganization(), user, "MATTER", matter.getId(), "deleted", Map.of(
+            "title", matter.getTitle()
+        ));
+        matterRepository.delete(matter);
     }
 
     public Matter get(UUID matterId, User user) {

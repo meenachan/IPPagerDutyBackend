@@ -40,4 +40,13 @@ public class MatterController {
             .map(MatterResponse::from)
             .toList());
     }
+
+    @DeleteMapping("/{matterId}")
+    public ResponseEntity<Void> delete(@PathVariable UUID orgId,
+                                       @PathVariable UUID matterId,
+                                       HttpServletRequest req) {
+        AuthContext ctx = AuthInterceptor.require(req);
+        matterService.delete(orgId, matterId, ctx.user());
+        return ResponseEntity.noContent().build();
+    }
 }
