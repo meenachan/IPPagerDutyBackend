@@ -29,6 +29,7 @@ public class OrganizationService {
     private final EmailSender emailSender;
     private final AuditService auditService;
     private final DeadlineService deadlineService;
+    private final EmailTemplateService emailTemplateService;
 
     public OrganizationService(OrganizationRepository organizationRepository,
                                UserRepository userRepository,
@@ -38,7 +39,8 @@ public class OrganizationService {
                                AuthService authService,
                                EmailSender emailSender,
                                AuditService auditService,
-                               DeadlineService deadlineService) {
+                               DeadlineService deadlineService,
+                               EmailTemplateService emailTemplateService) {
         this.organizationRepository = organizationRepository;
         this.userRepository = userRepository;
         this.memberRepository = memberRepository;
@@ -48,6 +50,7 @@ public class OrganizationService {
         this.emailSender = emailSender;
         this.auditService = auditService;
         this.deadlineService = deadlineService;
+        this.emailTemplateService = emailTemplateService;
     }
 
     @Transactional
@@ -110,7 +113,9 @@ public class OrganizationService {
         memberRepository.save(member);
 
         authService.requestMagicLink(email);
-        emailSender.send(email, "You've been invited", "You've been invited to " + org.getName());
+        emailSender.sendHtml(email, "You’re invited to IPPagerDuty",
+            emailTemplateService.invitationText(org.getName()),
+            emailTemplateService.invitationHtml(org.getName()));
 
         auditService.record(org, inviter, "ORGANIZATION_MEMBER", member.getId(), "invited", Map.of(
             "email", email,

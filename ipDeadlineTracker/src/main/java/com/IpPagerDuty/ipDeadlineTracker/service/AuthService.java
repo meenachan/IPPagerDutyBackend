@@ -29,6 +29,7 @@ public class AuthService {
     private final TokenGenerator tokenGenerator;
     private final EmailSender emailSender;
     private final AppProperties appProperties;
+    private final EmailTemplateService emailTemplateService;
     private final Map<String, Session> rawSessionTokens = new ConcurrentHashMap<>();
 
     public AuthService(UserRepository userRepository,
@@ -36,13 +37,15 @@ public class AuthService {
                        SessionRepository sessionRepository,
                        TokenGenerator tokenGenerator,
                        EmailSender emailSender,
-                       AppProperties appProperties) {
+                       AppProperties appProperties,
+                       EmailTemplateService emailTemplateService) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.sessionRepository = sessionRepository;
         this.tokenGenerator = tokenGenerator;
         this.emailSender = emailSender;
         this.appProperties = appProperties;
+        this.emailTemplateService = emailTemplateService;
     }
 
     @Transactional
@@ -60,8 +63,9 @@ public class AuthService {
         token.setExpiresAt(Instant.now().plus(appProperties.getMagicLink().getExpiryMinutes(), ChronoUnit.MINUTES));
         tokenRepository.save(token);
 
-        emailSender.send(user.getEmail(), "Your magic link",
-            "Click to log in: " + appProperties.getFrontend().getBaseUrl() + appProperties.getFrontend().getCallbackPath() + "?token=" + rawToken);
+        String link = appProperties.getFrontend().getBaseUrl() + appProperties.getFrontend().getCallbackPath() + "?token=" + rawToken;
+        emailSender.sendHtml(user.getEmail(), "Sign in to IPPagerDuty",
+            emailTemplateService.magicLinkText(link), emailTemplateService.magicLinkHtml(link));
         logger.info("Magic link requested for user {}", user.getId());
         return true;
     }

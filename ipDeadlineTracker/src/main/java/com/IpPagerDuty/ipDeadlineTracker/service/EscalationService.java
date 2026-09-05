@@ -29,6 +29,7 @@ public class EscalationService {
     private final NotificationRepository notificationRepository;
     private final NotificationSender notificationSender;
     private final AuditService auditService;
+    private final EmailTemplateService emailTemplateService;
 
     public EscalationService(OrganizationRepository organizationRepository,
                              OrganizationMemberRepository memberRepository,
@@ -38,7 +39,8 @@ public class EscalationService {
                              DeadlineEscalationPolicyRepository depRepository,
                              NotificationRepository notificationRepository,
                              NotificationSender notificationSender,
-                             AuditService auditService) {
+                             AuditService auditService,
+                             EmailTemplateService emailTemplateService) {
         this.organizationRepository = organizationRepository;
         this.memberRepository = memberRepository;
         this.emailGroupRepository = emailGroupRepository;
@@ -48,6 +50,7 @@ public class EscalationService {
         this.notificationRepository = notificationRepository;
         this.notificationSender = notificationSender;
         this.auditService = auditService;
+        this.emailTemplateService = emailTemplateService;
     }
 
     private OrganizationMember ensureStaff(UUID orgId, User user) {
@@ -136,9 +139,11 @@ public class EscalationService {
         EscalationPolicy policy = dep.getEscalationPolicy();
         EscalationEmailGroup group = policy.getEmailGroup();
         for (String email : group.getEmails()) {
-            notificationSender.send(email,
+            String link = emailTemplateService.deadlineUrl(deadline.getId());
+            notificationSender.sendHtml(email,
                 "Escalation: " + deadline.getType() + " deadline",
-                "Deadline for matter " + deadline.getMatter().getTitle() + " is due " + deadline.getDueDate());
+                emailTemplateService.manualEscalationText(deadline.getMatter().getTitle(), deadline.getType(), deadline.getDueDate(), link),
+                emailTemplateService.manualEscalationHtml(deadline.getMatter().getTitle(), deadline.getType(), deadline.getDueDate(), link));
         }
         auditService.record(deadline.getMatter().getOrganization(), user, "DEADLINE", deadlineId, "escalation_sent_manual", Map.of(
             "policyId", policyId.toString(),
